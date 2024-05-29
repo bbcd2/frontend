@@ -3,9 +3,10 @@ import axios from 'axios';
 import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { FailedPostReason } from '$lib';
+import { DEBUG } from '$env/static/public';
 
 const getBackendServerIp = (channel: string): string => {
-	return '127.0.0.1:3001'; // DEBUG
+	if (DEBUG) return '127.0.0.1:3001';
 
 	// Val's Vell handles World News America
 	if (channel == 'BBC WORLD NEWS AMERICA HD') {
