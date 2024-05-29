@@ -23,7 +23,7 @@
 		PaperPlaneOutline,
 		BullhornSolid
 	} from 'flowbite-svelte-icons';
-	import { DurationUnit, FailedPostReason, SOURCES, Status, lookup_source_by_id } from '$lib';
+	import { DurationUnit, FailedPostReason, SOURCES, Status, lookupSourceById } from '$lib';
 
 	/** Get the last 15 records from the recordings table */
 	const getRecordings = async () => {
@@ -360,7 +360,7 @@
 							})()}
 						</td>
 						<td class="p-2 border-2 border-black dark:border-white">
-							{lookup_source_by_id(recording.channel)}
+							{lookupSourceById(recording.channel)}
 						</td>
 						<td class="p-2 border-2 border-black dark:border-white">
 							{Status[Math.min(Status['_SENTINEL_MAX'] - 1, recording.status)]}
@@ -378,7 +378,7 @@
 							>
 								<p title={recording.user}>Recorded by: <strong>bbcduser</strong></p>
 								<!-- TODO: Have the username change, but thats not entirely needed right now -->
-								<p>Recorded from: <strong>{lookup_source_by_id(recording.channel)}</strong></p>
+								<p>Recorded from: <strong>{lookupSourceById(recording.channel)}</strong></p>
 								<p>
 									Recording date/time: <strong
 										>{(() => {
@@ -436,7 +436,10 @@
 
 								{#if Math.min(Status['_SENTINEL_MAX'] - 1, recording.status) != Status['Complete']}
 									<Progressbar
-										progress={Math.min(100, recording.status * (100 / (Status['_SENTINEL_MAX'] - 1)))}
+										progress={Math.min(
+											100,
+											recording.status * (100 / (Status['_SENTINEL_MAX'] - 1))
+										)}
 										color="gray"
 									/>
 								{/if}

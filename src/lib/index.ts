@@ -60,14 +60,6 @@ export const SOURCES: { [key: string]: string[] } = {
 		'S4C',
 	]
 };
-export function lookup_source_by_id(id: number): string {
-	// i am so sorry to all my loved ones.
-	const lengths = Object.values(SOURCES).map((channelList) => channelList.length);
-	let subgroup = 0;
-	let subgroupIdx = 0;
-	for (let idx = 0; idx < Object.keys(SOURCES).length; idx++) {
-		subgroupIdx += 1;
-		if (subgroupIdx > lengths[subgroup] - 1) subgroupIdx = 0;
-	}
-	return Object.values(SOURCES)[subgroup][subgroupIdx];
+export function lookupSourceById(id: number): string {
+	return Object.values(SOURCES).flat(1)[id];
 }
