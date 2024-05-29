@@ -279,20 +279,22 @@
 	<p class="pb-4">Status:</p>
 </div>
 <div class="flex justify-center">
-	<Toast
-		dismissable={true}
-		contentClass="flex space-x-4 rtl:space-x-reverse divide-x rtl:divide-x-reverse divide-gray-200 dark:divide-gray-700"
-	>
-		<PaperPlaneOutline class="w-5 h-5 rotate-45 text-primary-600 dark:text-primary-500" />
-		<div class="text-sm font-normal ps-4">
-			{#if form?.error}
-				{form?.error.toString()}
-			{/if}
-			{#if form?.status === 200}
-				<div class="text-sm font-normal ps-4">Your recording has been scheduled.</div>
-			{/if}
-		</div>
-	</Toast>
+	{#if form?.error || form?.status == 200}
+		<Toast
+			dismissable={true}
+			contentClass="flex space-x-4 rtl:space-x-reverse divide-x rtl:divide-x-reverse divide-gray-200 dark:divide-gray-700"
+		>
+			<PaperPlaneOutline class="w-5 h-5 rotate-45 text-primary-600 dark:text-primary-500" />
+			<div class="text-sm font-normal ps-4">
+				{#if form?.error}
+					{form?.error.toString()}
+				{/if}
+				{#if form?.status === 200}
+					<div class="text-sm font-normal ps-4">Your recording has been scheduled.</div>
+				{/if}
+			</div>
+		</Toast>
+	{/if}
 </div>
 
 <form method="post" use:enhance>
