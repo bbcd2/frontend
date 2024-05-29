@@ -2,14 +2,28 @@
 	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
-	import { Label, Input, Select, Button, Toast, Banner } from 'flowbite-svelte';
+	import {
+		Label,
+		Input,
+		Select,
+		Button,
+		Toast,
+		Banner,
+		Modal,
+		Video,
+		Progressbar
+	} from 'flowbite-svelte';
+
+	// recording uuid (str): show modal (bool)
+	let showRecordingModals: { [key: string]: Boolean } = {};
+
 	import {
 		ArrowRightOutline,
 		LinkOutline,
 		PaperPlaneOutline,
 		BullhornSolid
 	} from 'flowbite-svelte-icons';
-	import { DurationUnit, FailedPostReason, SOURCES, Status } from '$lib';
+	import { DurationUnit, FailedPostReason, SOURCES, Status, lookup_source_by_id } from '$lib';
 
 	/** Get the last 15 records from the recordings table */
 	const getRecordings = async () => {
@@ -19,6 +33,7 @@
 			.limit(15)
 			.order('created_at', { ascending: false });
 		if (error) console.error(error.message);
+		console.debug({ data });
 		return data;
 	};
 
@@ -203,12 +218,17 @@
 		<Select
 			size="md"
 			class="w-full mt-2 bg-white border-black dark:bg-black dark:border-white"
-			items={SOURCES.map((channel) => {
-				return { value: channel, name: channel };
-			})}
 			bind:value={channel}
 			placeholder="Select channel..."
-		/>
+		>
+			{#each Object.entries(SOURCES) as [channelGroup, channels]}
+				<optgroup label={channelGroup}>
+					{#each channels as channel}
+						<option value={channel} />
+					{/each}
+				</optgroup>
+			{/each}
+		</Select>
 	</div>
 	<div class="flex flex-col items-center justify-center py-2">
 		<ArrowRightOutline />
@@ -339,11 +359,91 @@
 								);
 							})()}
 						</td>
-						<td class="p-2 border-2 border-black dark:border-white"></td>
-						<td class="p-2 border-2 border-black dark:border-white"></td>
-						<td class="p-2 border-2 border-black dark:border-white"
-							><a href="https://bbcd.uk.to/video/{recording.uuid}.mp4"><LinkOutline /></a></td
-						>
+						<td class="p-2 border-2 border-black dark:border-white">
+							{lookup_source_by_id(recording.channel)}
+						</td>
+						<td class="p-2 border-2 border-black dark:border-white">
+							{Status[Math.min(Status['_SENTINEL_MAX'] - 1, recording.status)]}
+						</td>
+						<td class="p-2 border-2 border-black dark:border-white">
+							<button
+								type="button"
+								on:click={() => (showRecordingModals[recording.uuid] = true)}
+								class="cursor-pointer"><LinkOutline /></button
+							>
+							<Modal
+								title="Recording {recording.uuid}"
+								bind:open={showRecordingModals[recording.uuid]}
+								autoclose
+							>
+								<p title={recording.user}>Recorded by: <strong>bbcduser</strong></p>
+								<!-- TODO: Have the username change, but thats not entirely needed right now -->
+								<p>Recorded from: <strong>{lookup_source_by_id(recording.channel)}</strong></p>
+								<p>
+									Recording date/time: <strong
+										>{(() => {
+											const startDate = new Date(recording.rec_start * 1000);
+											const endDate = new Date(recording.rec_end * 1000);
+											const sameDay =
+												startDate.getDate() === endDate.getDate() &&
+												startDate.getMonth() === endDate.getMonth() &&
+												startDate.getFullYear() === endDate.getFullYear();
+											return sameDay
+												? startDate.toLocaleDateString('en-GB', {
+														month: 'short',
+														day: '2-digit',
+														timeZone: 'Europe/London'
+													})
+												: startDate.toLocaleDateString('en-GB', {
+														month: 'short',
+														day: '2-digit',
+														timeZone: 'Europe/London'
+													}) +
+														' - ' +
+														endDate.toLocaleDateString('en-GB', {
+															month: 'short',
+															day: '2-digit',
+															timeZone: 'Europe/London'
+														});
+										})()} | {(() => {
+											const startDate = new Date(recording.rec_start * 1000);
+											const endDate = new Date(recording.rec_end * 1000);
+											return (
+												startDate.toLocaleTimeString('en-GB', {
+													hour: '2-digit',
+													minute: '2-digit',
+													timeZone: 'Europe/London'
+												}) +
+												' - ' +
+												endDate.toLocaleTimeString('en-GB', {
+													hour: '2-digit',
+													minute: '2-digit',
+													timeZone: 'Europe/London'
+												})
+											);
+										})()}</strong
+									>
+								</p>
+								<!-- TODO: Get recording length, boy is that gonna be a pain -->
+								{#if Math.min(Status['_SENTINEL_MAX'] - 1, recording.status) != Status['Complete']}
+									<p>
+										Recording status: <strong
+											>{Status[Math.min(Status['_SENTINEL_MAX'] - 1, recording.status)]}</strong
+										>
+									</p>
+								{/if}
+								<hr />
+								<!-- <Progressbar progress={recording.status} /> -->
+								{#if Math.min(Status['_SENTINEL_MAX'] - 1, recording.status) == Status['Complete']}
+									<!-- Show video if complete -->
+									<Video
+										src="https://bbcd.uk.to/video/{recording.uuid}.mp4"
+										controls
+										trackSrc="{recording.uuid}.mp4"
+									/>
+								{/if}
+							</Modal>
+						</td>
 					</tr>
 				{/each}
 			</tbody>
