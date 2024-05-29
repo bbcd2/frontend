@@ -2,7 +2,11 @@
 	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
-	import { Label, Input, Select, Button, Toast, Banner } from 'flowbite-svelte';
+	import { Label, Input, Select, Button, Toast, Banner, Modal, Video, Progressbar } from 'flowbite-svelte';
+
+	// recording uuid (str): show modal (bool)
+	let showRecordingModals = {};
+
 	import {
 		ArrowRightOutline,
 		LinkOutline,
@@ -19,6 +23,9 @@
 			.limit(15)
 			.order('created_at', { ascending: false });
 		if (error) console.log('error', error.message);
+		for (const rec of data) {
+			showRecordingModals[rec.uuid] = false;
+		}
 		return data;
 	};
 	function statusString(status: number) {
@@ -26,16 +33,12 @@
 			case 1:
 				return 'Initialising';
 			case 2:
-				return 'Downloading Video';
+				return 'Downloading';
 			case 3:
-				return 'Downloading Audio';
+				return 'Encoding';
 			case 4:
-				return 'Combining Audio and Video';
+				return 'Uploading Result';
 			case 5:
-				return 'Cleaning Segments';
-			case 6:
-				return 'Uploading File';
-			case 7:
 				return 'Complete';
 			default:
 				return 'Unknown';
@@ -80,7 +83,7 @@
 			case 17:
 				return 'BBC ONE WEST MIDLANDS HD';
 			case 18:
-				return 'BBC ONE YOKRSHIRE HD';
+				return 'BBC ONE YORKSHIRE HD';
 			case 19:
 				return 'BBC TWO HD';
 			case 20:
@@ -276,41 +279,47 @@
 		<Select
 			size="md"
 			class="w-full mt-2 bg-white border-black dark:bg-black dark:border-white"
-			items={[
-				{ value: '0', name: 'BBC NEWS CHANNEL HD' },
-				{ value: '1', name: 'BBC WORLD NEWS AMERICA HD' },
-				{ value: '2', name: 'BBC ONE HD' },
-				{ value: '3', name: 'BBC ONE WALES HD' },
-				{ value: '4', name: 'BBC ONE SCOTLAND HD' },
-				{ value: '5', name: 'BBC ONE NORTHERN IRELAND HD' },
-				{ value: '6', name: 'BBC ONE CHANNEL ISLANDS HD' },
-				{ value: '7', name: 'BBC ONE EAST HD' },
-				{ value: '8', name: 'BBC ONE EAST MIDLANDS HD' },
-				{ value: '9', name: 'BBC ONE EAST YORKSHIRE & LINCONSHIRE HD' },
-				{ value: '10', name: 'BBC ONE LONDON HD' },
-				{ value: '11', name: 'BBC ONE NORTH EAST HD' },
-				{ value: '12', name: 'BBC ONE NORTH WEST HD' },
-				{ value: '13', name: 'BBC ONE SOUTH HD' },
-				{ value: '14', name: 'BBC ONE SOUTH EAST HD' },
-				{ value: '15', name: 'BBC ONE SOUTH WEST HD' },
-				{ value: '16', name: 'BBC ONE WEST HD' },
-				{ value: '17', name: 'BBC ONE WEST MIDLANDS HD' },
-				{ value: '18', name: 'BBC ONE YOKRSHIRE HD' },
-				{ value: '19', name: 'BBC TWO HD' },
-				{ value: '20', name: 'BBC TWO NORTHERN IRELAND HD' },
-				{ value: '21', name: 'BBC TWO WALES DIGITAL' },
-				{ value: '22', name: 'BBC THREE HD' },
-				{ value: '23', name: 'BBC FOUR HD' },
-				{ value: '24', name: 'CBBC HD' },
-				{ value: '25', name: 'CBEEBIES HD' },
-				{ value: '26', name: 'BBC SCOTLAND HD' },
-				{ value: '27', name: 'BBC PARLIAMENT' },
-				{ value: '28', name: 'BBC ALBA' },
-				{ value: '29', name: 'S4C' }
-			]}
-			bind:value={channel}
-			placeholder="Select channel..."
-		/>
+			placeholder="Select a channel..."
+		> <!-- TODO: find a way to have this happen at runtime based on an array -->
+			<optgroup label="BBC NEWS" id="news">
+				<option selected value="0">BBC NEWS CHANNEL HD</option>
+				<option value="1">BBC WORLD NEWS AMERICA HD</option>
+			</optgroup>
+			<optgroup label="BBC ONE" id="one">
+				<option value="2">BBC ONE HD</option>
+				<option value="3">BBC ONE WALES HD</option>
+				<option value="4">BBC ONE SCOTLAND HD</option>
+				<option value="5">BBC ONE NORTHERN IRELAND HD</option>
+				<option value="6">BBC ONE CHANNEL ISLANDS HD</option>
+				<option value="7">BBC ONE EAST HD</option>
+				<option value="8">BBC ONE EAST MIDLANDS HD</option>
+				<option value="9">BBC ONE EAST YORKSHIRE & LINCONSHIRE HD</option>
+				<option value="10">BBC ONE LONDON HD</option>
+				<option value="11">BBC ONE NORTH EAST HD</option>
+				<option value="12">BBC ONE NORTH WEST HD</option>
+				<option value="13">BBC ONE SOUTH HD</option>
+				<option value="14">BBC ONE SOUTH EAST HD</option>
+				<option value="15">BBC ONE SOUTH WEST HD</option>
+				<option value="16">BBC ONE WEST HD</option>
+				<option value="17">BBC ONE WEST MIDLANDS HD</option>
+				<option value="18">BBC ONE YORKSHIRE HD</option>
+			</optgroup>
+			<optgroup label="BBC TWO" id="two">
+				<option value="19">BBC TWO HD</option>
+				<option value="20">BBC TWO NORTHERN IRELAND HD</option>
+				<option value="21">BBC TWO WALES DIGITAL</option>
+			</optgroup>
+			<optgroup label="OTHER" id="other">
+				<option value="22">BBC THREE HD</option>
+				<option value="23">BBC FOUR HD</option>
+				<option value="24">CBBC HD</option>
+				<option value="25">CBEEBIES HD</option>
+				<option value="26">BBC SCOTLAND HD</option>
+				<option value="27">BBC PARLIAMENT</option>
+				<option value="28">BBC ALBA</option>
+				<option value="29">S4C</option>
+			</optgroup>
+		</Select>
 	</div>
 	<div class="flex flex-col justify-center items-center py-2">
 		<ArrowRightOutline />
@@ -468,15 +477,68 @@
 								);
 							})()}
 						</td>
-						<td class="p-2 border-2 border-black dark:border-white"
-							>{channelString(recording.channel)}</td
-						>
-						<td class="p-2 border-2 border-black dark:border-white"
-							>{statusString(recording.status)}</td
-						>
-						<td class="p-2 border-2 border-black dark:border-white"
-							><a href="https://bbcd.uk.to/video/{recording.uuid}.mp4"><LinkOutline /></a></td
-						>
+						<td class="p-2 border-2 border-black dark:border-white">
+							{channelString(recording.channel)}
+						</td>
+						<td class="p-2 border-2 border-black dark:border-white">
+							{statusString(recording.status)}
+						</td>
+						<td class="p-2 border-2 border-black dark:border-white">
+							<button type="button" on:click={() => (showRecordingModals[recording.uuid] = true)} class="cursor-pointer"><LinkOutline /></button>
+							<Modal title="Recording {recording.uuid}" bind:open={showRecordingModals[recording.uuid]} autoclose>
+								<p title="{recording.user}">Recorded by: <strong>bbcduser</strong></p> <!-- TODO: Have the username change, but thats not entirely needed right now -->
+								<p>Recorded from: <strong>{channelString(recording.channel)}</strong></p>
+								<p>Recording date/time: <strong>{(() => {
+									const startDate = new Date(recording.rec_start * 1000);
+									const endDate = new Date(recording.rec_end * 1000);
+									const sameDay =
+										startDate.getDate() === endDate.getDate() &&
+										startDate.getMonth() === endDate.getMonth() &&
+										startDate.getFullYear() === endDate.getFullYear();
+									return sameDay
+										? startDate.toLocaleDateString('en-GB', {
+												month: 'short',
+												day: '2-digit',
+												timeZone: 'Europe/London'
+											})
+										: startDate.toLocaleDateString('en-GB', {
+												month: 'short',
+												day: '2-digit',
+												timeZone: 'Europe/London'
+											}) +
+												' - ' +
+												endDate.toLocaleDateString('en-GB', {
+													month: 'short',
+													day: '2-digit',
+													timeZone: 'Europe/London'
+												});
+								})()} | {(() => {
+								const startDate = new Date(recording.rec_start * 1000);
+								const endDate = new Date(recording.rec_end * 1000);
+								return (
+									startDate.toLocaleTimeString('en-GB', {
+										hour: '2-digit',
+										minute: '2-digit',
+										timeZone: 'Europe/London'
+									}) +
+									' - ' +
+									endDate.toLocaleTimeString('en-GB', {
+										hour: '2-digit',
+										minute: '2-digit',
+										timeZone: 'Europe/London'
+									})
+								);
+								})()}</strong></p> <!-- TODO: Get recording length, boy is that gonna be a pain -->
+								{#if statusString(recording.status) != "Complete"}
+									<p>Recording status: <strong>{statusString(recording.status)}</strong></p>
+								{/if}
+								<hr />
+								<!-- <Progressbar progress={recording.status} /> -->
+								{#if statusString(recording.status) == "Complete"} <!-- Show video if complete -->
+									<Video src="https://bbcd.uk.to/video/{recording.uuid}.mp4" controls trackSrc="{recording.uuid}.mp4" />
+								{/if}
+							</Modal>
+						</td>
 					</tr>
 				{/each}
 			</tbody>
