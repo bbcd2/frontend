@@ -23,7 +23,7 @@
 		PaperPlaneOutline,
 		BullhornSolid
 	} from 'flowbite-svelte-icons';
-	import { DurationUnit, FailedPostReason, SOURCES, SOURCE_IDS, Status, lookup_source_by_id, lookup_source_by_name } from '$lib';
+	import { DurationUnit, FailedPostReason, SOURCES, Status, lookup_source_by_id } from '$lib';
 
 	/** Get the last 15 records from the recordings table */
 	const getRecordings = async () => {
@@ -224,7 +224,7 @@
 			{#each Object.entries(SOURCES) as [channelGroup, channels]}
 				<optgroup label={channelGroup}>
 					{#each channels as channel}
-						<option value={lookup_source_by_name(channel)}>{channel}</option>
+						<option value={channel}>{channel}</option>
 					{/each}
 				</optgroup>
 			{/each}
