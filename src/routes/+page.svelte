@@ -433,9 +433,11 @@
 									</p>
 								{/if}
 								<hr />
-								{#if recording.status*20 < 100}
-								<Progressbar progress={recording.status*20} />
-								{/if}
+
+								<Progressbar
+									progress={Math.min(100, recording.status * (100 / (Status['_SENTINEL_MAX'] - 1)))}
+								/>
+
 								{#if Math.min(Status['_SENTINEL_MAX'] - 1, recording.status) == Status['Complete']}
 									<!-- Show video if complete -->
 									<Video
