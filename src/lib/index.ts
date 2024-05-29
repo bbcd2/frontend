@@ -1,7 +1,9 @@
 export enum FailedPostReason {
 	TooLong = 'Your recording is too long. Please try again or contact us to increase your limit.',
 	StartBeforeEnd = 'The start timestamp is before the end timestamp.',
-	Future = "We can't record the future(!)"
+	Future = "We can't record the future(!)",
+	FailedSend = 'Your request could not be sent to the server.',
+	ServerError = 'An internal server error occurred!'
 }
 
 export enum DurationUnit {
@@ -11,12 +13,18 @@ export enum DurationUnit {
 }
 
 export enum Status {
+	// OK statuses
 	'Initialising' = 1,
 	'Downloading' = 2,
 	'Encoding' = 3,
 	'Uploading Result' = 4,
 	'Complete' = 5,
-	'_SENTINEL_MAX' = 6
+	/** Separation between OK statuses and error statuses */
+	'_SENTINEL_MAX_OK' = 6,
+	// Errors
+	'Downloading Failed' = 10,
+	'Encoding Failed' = 11,
+	'Uploading Failed' = 12
 }
 
 // prettier-ignore

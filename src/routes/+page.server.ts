@@ -6,7 +6,7 @@ import { FailedPostReason } from '$lib';
 import { DEBUG } from '$env/static/public';
 
 const getBackendServerIp = (channel: string): string => {
-	if (DEBUG) return '127.0.0.1:3001';
+	if (DEBUG === true) return '127.0.0.1:3001';
 
 	// Val's Vell handles World News America
 	if (channel == 'BBC WORLD NEWS AMERICA HD') {
@@ -35,11 +35,6 @@ export const actions: Actions = {
 		);
 		const channel = data.get('channel')!.toString();
 
-		// Skew the timestamps +2hr (UTC -> UTC+2)
-		[startTimestamp, endTimestamp] = [startTimestamp, endTimestamp].map(
-			(timestamp) => timestamp - 60 * 60 * 2
-		);
-
 		// Validation
 		if (startTimestamp > endTimestamp) {
 			return fail(400, { error: FailedPostReason.StartBeforeEnd });
@@ -51,11 +46,15 @@ export const actions: Actions = {
 			return fail(400, { error: FailedPostReason.TooLong });
 		}
 
-		const response = await axios.post(`http://${getBackendServerIp(channel)}/downloadVideo`, {
-			startTimestamp,
-			endTimestamp,
-			channel
-		});
+		try {
+			var response = await axios.post(`http://${getBackendServerIp(channel)}/downloadVideo`, {
+				startTimestamp,
+				endTimestamp,
+				channel
+			});
+		} catch (e) {
+			return fail(500, { error: FailedPostReason.FailedSend });
+		}
 		return { status: 200, body: await response.data };
 	}
 };

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import moment from 'moment-timezone';
 	import { onMount } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
@@ -24,6 +25,19 @@
 		BullhornSolid
 	} from 'flowbite-svelte-icons';
 	import { DurationUnit, FailedPostReason, SOURCES, Status, lookupSourceById } from '$lib';
+
+	/** Get the maximum day for a given month (between 1-12) */
+	const getMaxDay = (year: number, month: number): number => {
+		// prettier-ignore
+		switch (month) {
+			case 2: return year % 4 == 0 && year % 100 != 0 ? 29 : 28;
+			case 4: return 30;
+			case 6: return 30;
+			case 9: return 30;
+			case 11: return 30;
+			default: return 31;
+		}
+	};
 
 	/** Get the last 15 records from the recordings table */
 	const getRecordings = async () => {
@@ -100,9 +114,14 @@
 	let currentJobs: string[] = [];
 
 	// Inputs
-	// Timezone should be in UTC+0
+	// Timezone should be in UK time (BST or GMT)
 	const currentDate = new Date();
 	let [month, day] = [currentDate.getMonth() + 1, currentDate.getDate()].map((x) => `${x}`);
+	let maxDay = getMaxDay(currentDate.getUTCFullYear(), parseInt(month));
+	$: {
+		maxDay = getMaxDay(currentDate.getUTCFullYear(), parseInt(month));
+		day = `${Math.min(maxDay, parseInt(day))}`;
+	}
 	let [startHour, startMinute, startSecond] = [
 		currentDate.getHours(),
 		currentDate.getMinutes(),
@@ -126,17 +145,19 @@
 		});
 		const totalSeconds = duration * 60 ** (durationUnit as number);
 		console.log({ totalSeconds });
-		startTimestamp =
-			new Date(
-				Date.UTC(
+		startTimestamp = moment
+			.tz(
+				[
 					currentDate.getUTCFullYear(),
 					parseInt(month) - 1,
 					parseInt(day),
 					parseInt(startHour),
 					parseInt(startMinute),
 					parseInt(startSecond)
-				)
-			).getTime() / 1000;
+				],
+				'Europe/London'
+			)
+			.unix();
 		endTimestamp = startTimestamp + totalSeconds;
 	}
 	let channel = SOURCES[1];
@@ -161,7 +182,7 @@
 				<Input
 					size="md"
 					min="1"
-					max="23"
+					max={maxDay}
 					type="number"
 					bind:value={day}
 					class="bg-white border-black rounded-r-none dark:bg-black dark:border-white"
@@ -261,12 +282,12 @@
 		</div>
 		<h6 class="self-start pt-4 font-semibold text-md">
 			Ends at {new Date(endTimestamp * 1000).toLocaleString('en-GB', {
-				timeZone: 'UTC',
+				timeZone: 'Europe/London',
 				minute: 'numeric',
 				hour: 'numeric',
 				second: 'numeric',
 				hour12: false
-			})} (UTC+0)
+			})} (UK time)
 		</h6>
 	</div>
 </aside>
@@ -365,7 +386,7 @@
 							{lookupSourceById(recording.channel)}
 						</td>
 						<td class="p-2 border-2 border-black dark:border-white">
-							{Status[Math.min(Status['_SENTINEL_MAX'] - 1, recording.status)]}
+							{Status[recording.status]}
 						</td>
 						<td class="p-2 border-2 border-black dark:border-white">
 							<button
@@ -426,27 +447,23 @@
 										})()}</strong
 									>
 								</p>
-								<!-- TODO: Get recording length, boy is that gonna be a pain -->
-								{#if Math.min(Status['_SENTINEL_MAX'] - 1, recording.status) != Status['Complete']}
-									<p>
-										Recording status: <strong
-											>{Status[Math.min(Status['_SENTINEL_MAX'] - 1, recording.status)]}</strong
-										>
-									</p>
+
+								{#if recording.status != Status['Complete']}
+									<p>Recording status: <strong>{Status[recording.status]}</strong></p>
 								{/if}
+
 								<hr />
 
-								{#if Math.min(Status['_SENTINEL_MAX'] - 1, recording.status) != Status['Complete']}
+								{#if recording.status != Status['Complete']}
+									<!-- Show progressbar if not complete -->
 									<Progressbar
 										progress={Math.min(
 											100,
-											recording.status * (100 / (Status['_SENTINEL_MAX'] - 1))
+											recording.status * (100 / (Status['_SENTINEL_MAX_OK'] - 1))
 										)}
 										color="gray"
 									/>
-								{/if}
-
-								{#if Math.min(Status['_SENTINEL_MAX'] - 1, recording.status) == Status['Complete']}
+								{:else}
 									<!-- Show video if complete -->
 									<Video
 										src="https://bbcd.uk.to/video/{recording.uuid}.mp4"
