@@ -16,13 +16,11 @@ export enum Status {
 	// OK statuses -- fixme: complete bs: needed to deploy
 	'Initialising' = 1,
 	'Downloading' = 2,
-	'Downloading ' = 3,
-	'Combining' = 4,
-	'Uploading' = 5,
-	'Working' = 6,
-	'Completed' = 7,
+	'Encoding' = 3,
+	'Uploading' = 4,
+	'Completed' = 5,
 	/** Separation between OK statuses and error statuses */
-	// '_SENTINEL_MAX_OK' = 6,
+	'_SENTINEL_MAX_OK' = 6,
 	// Errors
 	'Downloading Failed' = 10,
 	'Encoding Failed' = 11,

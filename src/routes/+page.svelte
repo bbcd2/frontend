@@ -448,13 +448,13 @@
 									>
 								</p>
 
-								{#if recording.status != Status['Completed']}
+								{#if recording.status != Status.Completed}
 									<p>Recording status: <strong>{Status[recording.status]}</strong></p>
 								{/if}
 
 								<hr />
 
-								{#if recording.status != Status['Completed']}
+								{#if recording.status != Status.Completed}
 									<!-- Show progressbar if not complete -->
 									<Progressbar
 										progress={Math.min(
