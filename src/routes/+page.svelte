@@ -16,7 +16,7 @@
 	} from 'flowbite-svelte';
 
 	// recording uuid (str): show modal (bool)
-	let showRecordingModals: { [key: string]: Boolean } = {};
+	let showRecordingModals: { [key: string]: boolean } = {};
 
 	import {
 		ArrowRightOutline,
@@ -24,8 +24,18 @@
 		PaperPlaneOutline,
 		BullhornSolid
 	} from 'flowbite-svelte-icons';
-	import { DurationUnit, FailedPostReason, SOURCES, Status, lookupSourceById } from '$lib';
+	import { DurationUnit, SOURCES, Status, lookupSourceById } from '$lib';
 
+	/** Get some recordings */
+	const getRecordings = async () => {
+		const { data, error } = await supabase
+			.from('recordings')
+			.select('*')
+			.limit(15)
+			.order('created_at', { ascending: false });
+		if (error) recordings = { obtained: false, error: `${error}`, recordings: undefined };
+		else recordings = { obtained: true, error: undefined, recordings: data! };
+	};
 	/** Get the maximum day for a given month (between 1-12) */
 	const getMaxDay = (year: number, month: number): number => {
 		// prettier-ignore
@@ -38,27 +48,13 @@
 			default: return 31;
 		}
 	};
-
-	/** Get the last 15 records from the recordings table */
-	const getRecordings = async () => {
-		const { data, error } = await supabase
-			.from('recordings')
-			.select('*')
-			.limit(15)
-			.order('created_at', { ascending: false });
-		if (error) console.error(error.message);
-		console.debug({ data });
-		return data;
-	};
-
 	/** Submit the hidden form */
-	async function submitForm() {
+	const submitForm = async () => {
 		const form = document.querySelector('form');
 		form?.submit();
-	}
-
+	};
 	/** Flash form submission status to snackbar if available */
-	onMount(() => {
+	const flashSnackbar = () => {
 		if (!form) return;
 		const snackbar = document.querySelector('#snackbar') as HTMLElement;
 		if (!snackbar) return;
@@ -77,14 +73,14 @@
 		setTimeout(() => {
 			snackbar.classList.remove('active');
 		}, 3000);
-	});
-
+	};
 	/** Check status on current jobs */
-	setTimeout(() => {
-		if (currentJobs.length < 0) return;
+	let statusInterval: NodeJS.Timeout | undefined = undefined;
+	const checkCurrentJobStatus = () => {
+		if (statusInterval) return;
 
-		const interval: NodeJS.Timeout = setInterval(async () => {
-			if (currentJobs.length < 0) return clearInterval(interval);
+		statusInterval = setInterval(async () => {
+			if (currentJobs.length < 0) return clearInterval(statusInterval);
 
 			for (let jobIdx = currentJobs.length - 1; jobIdx >= 0; jobIdx--) {
 				const currentJob = currentJobs[jobIdx];
@@ -93,25 +89,49 @@
 				const { data, error } = await supabase
 					.from('recordings')
 					.select('*')
-					.eq('uuid', currentJob);
+					.eq('uuid', currentJob)
+					.limit(1);
 				if (error) {
 					console.error(`Error fetching recording status: ${error.message}`);
-					clearInterval(interval);
+					return clearInterval(statusInterval);
 				}
 
+				const newRecordingInfo = data[0]!;
+
+				console.log({ recordings });
+				if (recordings.obtained)
+					recordings.recordings![
+						recordings.recordings!.findIndex((recording) => recording.uuid == newRecordingInfo.uuid)
+					] = newRecordingInfo;
+				recordings = recordings;
+
 				// Remove this job if complete
-				if (data && data.length > 0 && data[0].status == Status.Completed) {
+				if (newRecordingInfo.status >= Status.Completed) {
 					currentJobs.splice(jobIdx, 1);
 				}
 			}
-		}, 5000);
-	}, 5000);
+		}, 1000);
+	};
+
+	// On mount!
+	onMount(() => {
+		form && flashSnackbar();
+	});
 
 	// Form and database
+	interface RecordingsInfo {
+		obtained: boolean;
+		error: string | undefined;
+		recordings: any[] | undefined;
+	}
+	let recordings: RecordingsInfo = { obtained: false, error: undefined, recordings: undefined };
+	let currentJobs: string[] = [];
+	$: {
+		if (currentJobs.length >= 0) checkCurrentJobStatus();
+	}
 	export let data;
 	$: ({ supabase } = data);
 	export let form;
-	let currentJobs: string[] = [];
 
 	// Inputs
 	// Timezone should be in UK time (BST or GMT)
@@ -126,25 +146,17 @@
 		currentDate.getHours(),
 		currentDate.getMinutes(),
 		currentDate.getSeconds()
-	].map((x) => `${x}`);
+	].map((x) => {
+		// We need to store these as strings for native input elements
+		return `${x}`;
+	});
 	let durationUnit = DurationUnit.Minutes;
 	let duration = 0;
 	// Precision of seconds, i.e. *1000 when converting to a `Date`
 	let [startTimestamp, endTimestamp] = [0, 0];
+	// Get POSIX timestamp, accounting for UK timezone
 	$: {
-		console.log({
-			duration,
-			durationUnit,
-			month,
-			day,
-			startHour,
-			startMinute,
-			startSecond,
-			startTimestamp,
-			endTimestamp
-		});
 		const totalSeconds = duration * 60 ** (durationUnit as number);
-		console.log({ totalSeconds });
 		startTimestamp = moment
 			.tz(
 				[
@@ -160,7 +172,7 @@
 			.unix();
 		endTimestamp = startTimestamp + totalSeconds;
 	}
-	let channel = SOURCES[1];
+	let channel = Object.values(SOURCES)[0][0];
 
 	// Current jobs
 	// The backend returns the job UUID in its body
@@ -328,156 +340,157 @@
 
 {#await getRecordings()}
 	<p class="italic text-center">Fetching recordings...</p>
-{:then recordings}
-	<div class="flex justify-center">
-		<table
-			class="lg:2-xl:mx-[22rem] md:mx-[8rem] mx-2 my-2 border-black dark:border-white w-full table-auto"
-		>
-			<tbody class="border-2 border-black divide-y dark:border-white">
-				{#each recordings ?? [] as recording}
-					<tr
-						><td class="p-2 border-2 border-black dark:border-white">
-							{(() => {
-								const startDate = new Date(recording.rec_start * 1000);
-								const endDate = new Date(recording.rec_end * 1000);
-								const sameDay =
-									startDate.getDate() === endDate.getDate() &&
-									startDate.getMonth() === endDate.getMonth() &&
-									startDate.getFullYear() === endDate.getFullYear();
-								return sameDay
-									? startDate.toLocaleDateString('en-GB', {
-											month: 'short',
-											day: '2-digit',
-											timeZone: 'Europe/London'
-										})
-									: startDate.toLocaleDateString('en-GB', {
-											month: 'short',
-											day: '2-digit',
-											timeZone: 'Europe/London'
-										}) +
-											' - ' +
-											endDate.toLocaleDateString('en-GB', {
-												month: 'short',
-												day: '2-digit',
-												timeZone: 'Europe/London'
-											});
-							})()}
-						</td>
-						<td class="p-2 border-2 border-black dark:border-white">
-							{(() => {
-								const startDate = new Date(recording.rec_start * 1000);
-								const endDate = new Date(recording.rec_end * 1000);
-								return (
-									startDate.toLocaleTimeString('en-GB', {
-										hour: '2-digit',
-										minute: '2-digit',
-										timeZone: 'Europe/London'
-									}) +
-									' - ' +
-									endDate.toLocaleTimeString('en-GB', {
-										hour: '2-digit',
-										minute: '2-digit',
+{:then}
+	{#if recordings.error}
+		<p>Failed to fetch recordings: {recordings.error}</p>
+	{/if}
+{/await}
+<div class="flex justify-center">
+	<table
+		class="lg:2-xl:mx-[22rem] md:mx-[8rem] mx-2 my-2 border-black dark:border-white w-full table-auto"
+	>
+		<tbody class="border-2 border-black divide-y dark:border-white">
+			{#each recordings.recordings ?? [] as recording}
+				<tr
+					><td class="p-2 border-2 border-black dark:border-white">
+						{(() => {
+							const startDate = new Date(recording.rec_start * 1000);
+							const endDate = new Date(recording.rec_end * 1000);
+							const sameDay =
+								startDate.getDate() === endDate.getDate() &&
+								startDate.getMonth() === endDate.getMonth() &&
+								startDate.getFullYear() === endDate.getFullYear();
+							return sameDay
+								? startDate.toLocaleDateString('en-GB', {
+										month: 'short',
+										day: '2-digit',
 										timeZone: 'Europe/London'
 									})
-								);
-							})()}
-						</td>
-						<td class="p-2 border-2 border-black dark:border-white">
-							{lookupSourceById(recording.channel)}
-						</td>
-						<td class="p-2 border-2 border-black dark:border-white">
-							{Status[recording.status]}
-						</td>
-						<td class="p-2 border-2 border-black dark:border-white">
-							<button
-								type="button"
-								on:click={() => (showRecordingModals[recording.uuid] = true)}
-								class="cursor-pointer"><LinkOutline /></button
-							>
-							<Modal
-								title="Recording {recording.uuid}"
-								bind:open={showRecordingModals[recording.uuid]}
-								autoclose
-							>
-								<p title={recording.user}>Recorded by: <strong>bbcduser</strong></p>
-								<!-- TODO: Have the username change, but thats not entirely needed right now -->
-								<p>Recorded from: <strong>{lookupSourceById(recording.channel)}</strong></p>
-								<p>
-									Recording date/time: <strong
-										>{(() => {
-											const startDate = new Date(recording.rec_start * 1000);
-											const endDate = new Date(recording.rec_end * 1000);
-											const sameDay =
-												startDate.getDate() === endDate.getDate() &&
-												startDate.getMonth() === endDate.getMonth() &&
-												startDate.getFullYear() === endDate.getFullYear();
-											return sameDay
-												? startDate.toLocaleDateString('en-GB', {
-														month: 'short',
-														day: '2-digit',
-														timeZone: 'Europe/London'
-													})
-												: startDate.toLocaleDateString('en-GB', {
-														month: 'short',
-														day: '2-digit',
-														timeZone: 'Europe/London'
-													}) +
-														' - ' +
-														endDate.toLocaleDateString('en-GB', {
-															month: 'short',
-															day: '2-digit',
-															timeZone: 'Europe/London'
-														});
-										})()} | {(() => {
-											const startDate = new Date(recording.rec_start * 1000);
-											const endDate = new Date(recording.rec_end * 1000);
-											return (
-												startDate.toLocaleTimeString('en-GB', {
-													hour: '2-digit',
-													minute: '2-digit',
-													timeZone: 'Europe/London'
-												}) +
-												' - ' +
-												endDate.toLocaleTimeString('en-GB', {
-													hour: '2-digit',
-													minute: '2-digit',
+								: startDate.toLocaleDateString('en-GB', {
+										month: 'short',
+										day: '2-digit',
+										timeZone: 'Europe/London'
+									}) +
+										' - ' +
+										endDate.toLocaleDateString('en-GB', {
+											month: 'short',
+											day: '2-digit',
+											timeZone: 'Europe/London'
+										});
+						})()}
+					</td>
+					<td class="p-2 border-2 border-black dark:border-white">
+						{(() => {
+							const startDate = new Date(recording.rec_start * 1000);
+							const endDate = new Date(recording.rec_end * 1000);
+							return (
+								startDate.toLocaleTimeString('en-GB', {
+									hour: '2-digit',
+									minute: '2-digit',
+									timeZone: 'Europe/London'
+								}) +
+								' - ' +
+								endDate.toLocaleTimeString('en-GB', {
+									hour: '2-digit',
+									minute: '2-digit',
+									timeZone: 'Europe/London'
+								})
+							);
+						})()}
+					</td>
+					<td class="p-2 border-2 border-black dark:border-white">
+						{lookupSourceById(recording.channel)}
+					</td>
+					<td class="p-2 border-2 border-black dark:border-white">
+						{Status[recording.status]}
+					</td>
+					<td class="p-2 border-2 border-black dark:border-white">
+						<button
+							type="button"
+							on:click={() => (showRecordingModals[recording.uuid] = true)}
+							class="cursor-pointer"><LinkOutline /></button
+						>
+						<Modal
+							title="Recording {recording.uuid}"
+							bind:open={showRecordingModals[recording.uuid]}
+							autoclose
+						>
+							<p title={recording.user}>Recorded by: <strong>bbcduser</strong></p>
+							<!-- TODO: Have the username change, but thats not entirely needed right now -->
+							<p>Recorded from: <strong>{lookupSourceById(recording.channel)}</strong></p>
+							<p>
+								Recording date/time: <strong
+									>{(() => {
+										const startDate = new Date(recording.rec_start * 1000);
+										const endDate = new Date(recording.rec_end * 1000);
+										const sameDay =
+											startDate.getDate() === endDate.getDate() &&
+											startDate.getMonth() === endDate.getMonth() &&
+											startDate.getFullYear() === endDate.getFullYear();
+										return sameDay
+											? startDate.toLocaleDateString('en-GB', {
+													month: 'short',
+													day: '2-digit',
 													timeZone: 'Europe/London'
 												})
-											);
-										})()}</strong
-									>
-								</p>
+											: startDate.toLocaleDateString('en-GB', {
+													month: 'short',
+													day: '2-digit',
+													timeZone: 'Europe/London'
+												}) +
+													' - ' +
+													endDate.toLocaleDateString('en-GB', {
+														month: 'short',
+														day: '2-digit',
+														timeZone: 'Europe/London'
+													});
+									})()} | {(() => {
+										const startDate = new Date(recording.rec_start * 1000);
+										const endDate = new Date(recording.rec_end * 1000);
+										return (
+											startDate.toLocaleTimeString('en-GB', {
+												hour: '2-digit',
+												minute: '2-digit',
+												timeZone: 'Europe/London'
+											}) +
+											' - ' +
+											endDate.toLocaleTimeString('en-GB', {
+												hour: '2-digit',
+												minute: '2-digit',
+												timeZone: 'Europe/London'
+											})
+										);
+									})()}</strong
+								>
+							</p>
 
-								{#if recording.status != Status.Completed}
-									<p>Recording status: <strong>{Status[recording.status]}</strong></p>
-								{/if}
+							{#if recording.status != Status.Completed}
+								<p>Recording status: <strong>{Status[recording.status]}</strong></p>
+							{/if}
 
-								<hr />
+							<hr />
 
-								{#if recording.status != Status.Completed}
-									<!-- Show progressbar if not complete -->
-									<Progressbar
-										progress={Math.min(
-											100,
-											recording.status * (100 / (Status['_SENTINEL_MAX_OK'] - 1))
-										)}
-										color="gray"
-									/>
-								{:else}
-									<!-- Show video if complete -->
-									<Video
-										src="https://bbcd.uk.to/video/{recording.uuid}.mp4"
-										controls
-										trackSrc="{recording.uuid}.mp4"
-									/>
-								{/if}
-							</Modal>
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
-{:catch error}
-	<p>Failed to fetch recordings: {error.message}</p>
-{/await}
+							{#if recording.status != Status.Completed}
+								<!-- Show progressbar if not complete -->
+								<Progressbar
+									progress={Math.min(
+										100,
+										recording.status * (100 / (Status['_SENTINEL_MAX_OK'] - 1))
+									)}
+									color="gray"
+								/>
+							{:else}
+								<!-- Show video if complete -->
+								<Video
+									src="https://bbcd.uk.to/video/{recording.uuid}.mp4"
+									controls
+									trackSrc="{recording.uuid}.mp4"
+								/>
+							{/if}
+						</Modal>
+					</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+</div>

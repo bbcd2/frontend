@@ -5,6 +5,8 @@ import type { Actions } from './$types';
 import { FailedPostReason } from '$lib';
 
 const getBackendServerIp = (channel: string): string => {
+	// return '127.0.0.1:3001';
+
 	// Val's Vell handles World News America
 	if (channel == 'BBC WORLD NEWS AMERICA HD') {
 		return '100.64.1.5:3001';

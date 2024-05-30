@@ -1,3 +1,4 @@
+/** A reason for a failed post */
 export enum FailedPostReason {
 	TooLong = 'Your recording is too long. Please try again or contact us to increase your limit.',
 	StartBeforeEnd = 'The start timestamp is before the end timestamp.',
@@ -6,18 +7,20 @@ export enum FailedPostReason {
 	ServerError = 'An internal server error occurred!'
 }
 
+/** Duration units -- 60**unit */
 export enum DurationUnit {
 	Seconds = 0,
 	Minutes = 1,
 	Hours = 2
 }
 
+/** Recording status from the server */
 export enum Status {
 	// OK statuses -- fixme: complete bs: needed to deploy
 	'Initialising' = 1,
 	'Downloading' = 2,
 	'Encoding' = 3,
-	'Uploading' = 4,
+	'Uploading Result' = 4,
 	'Completed' = 5,
 	/** Separation between OK statuses and error statuses */
 	'_SENTINEL_MAX_OK' = 6,
@@ -28,6 +31,7 @@ export enum Status {
 }
 
 // prettier-ignore
+/** Sources with groups */
 export const SOURCES: { [key: string]: string[] } = {
 	'BBC NEWS': [
 		'BBC NEWS CHANNEL HD',
@@ -68,6 +72,8 @@ export const SOURCES: { [key: string]: string[] } = {
 		'S4C',
 	]
 };
-export function lookupSourceById(id: number): string {
+
+/** Find a source's name by its ID */
+export const lookupSourceById = (id: number): string => {
 	return Object.values(SOURCES).flat(1)[id];
-}
+};
