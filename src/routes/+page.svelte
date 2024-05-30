@@ -99,10 +99,13 @@
 				const newRecordingInfo = data[0]!;
 
 				console.log({ recordings });
-				if (recordings.obtained)
-					recordings.recordings![
-						recordings.recordings!.findIndex((recording) => recording.uuid == newRecordingInfo.uuid)
-					] = newRecordingInfo;
+				if (recordings.obtained) {
+					const idx = recordings.recordings!.findIndex(
+						(recording) => recording.uuid == newRecordingInfo.uuid
+					);
+					if (idx !== -1) recordings.recordings![idx] = newRecordingInfo;
+					else recordings.recordings!.splice(0, 0, newRecordingInfo);
+				}
 				recordings = recordings;
 
 				// Remove this job if complete
@@ -470,7 +473,7 @@
 
 							<hr />
 
-							{#if recording.status != Status.Completed}
+							{#if recording.status < Status.Completed}
 								<!-- Show progressbar if not complete -->
 								<Progressbar
 									progress={Math.min(
@@ -479,7 +482,7 @@
 									)}
 									color="gray"
 								/>
-							{:else}
+							{:else if recording.status == Status.Completed}
 								<!-- Show video if complete -->
 								<Video
 									src="https://bbcd.uk.to/video/{recording.uuid}.mp4"
