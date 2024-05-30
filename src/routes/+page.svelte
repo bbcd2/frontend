@@ -9,10 +9,10 @@
 		Select,
 		Button,
 		Toast,
-		Banner,
 		Modal,
 		Video,
-		Progressbar
+		Progressbar,
+		Checkbox
 	} from 'flowbite-svelte';
 
 	// recording uuid (str): show modal (bool)
@@ -93,12 +93,12 @@
 					.limit(1);
 				if (error) {
 					console.error(`Error fetching recording status: ${error.message}`);
+					recordings.error = error.message;
 					return clearInterval(statusInterval);
 				}
 
 				const newRecordingInfo = data[0]!;
 
-				console.log({ recordings });
 				if (recordings.obtained) {
 					const idx = recordings.recordings!.findIndex(
 						(recording) => recording.uuid == newRecordingInfo.uuid
@@ -137,6 +137,7 @@
 	export let form;
 
 	// Inputs
+	let encode = true;
 	// Timezone should be in UK time (BST or GMT)
 	const currentDate = new Date();
 	let [month, day] = [currentDate.getMonth() + 1, currentDate.getDate()].map((x) => `${x}`);
@@ -270,40 +271,60 @@
 		<ArrowRightOutline />
 	</div>
 
-	<div class="flex flex-col">
-		<h1 class="self-start pb-2 text-3xl font-bold">Length</h1>
-		<div class="flex flex-row">
-			<div class="w-20 mt-2">
-				<Input
-					size="md"
-					type="number"
-					bind:value={duration}
-					min="0"
-					class="bg-white border-black rounded-r-none dark:bg-black dark:border-white"
-				/>
+	<div class="flex flex-col gap-4">
+		<div class="flex flex-col">
+			<h1 class="self-start pb-2 text-3xl font-bold">Length</h1>
+			<div class="flex flex-row">
+				<div class="w-20 mt-2">
+					<Input
+						size="md"
+						type="number"
+						bind:value={duration}
+						min="0"
+						class="bg-white border-black rounded-r-none dark:bg-black dark:border-white"
+					/>
+				</div>
+				<div class="mt-2 w-100">
+					<Select
+						size="md"
+						class="w-full font-semibold bg-white border-black rounded-l-none dark:bg-black dark:border-white"
+						items={[
+							{ value: 0, name: 'Seconds' },
+							{ value: 1, name: 'Minutes' },
+							{ value: 2, name: 'Hours' }
+						]}
+						bind:value={durationUnit}
+					/>
+				</div>
 			</div>
-			<div class="mt-2 w-100">
-				<Select
-					size="md"
-					class="w-full font-semibold bg-white border-black rounded-l-none dark:bg-black dark:border-white"
-					items={[
-						{ value: 0, name: 'Seconds' },
-						{ value: 1, name: 'Minutes' },
-						{ value: 2, name: 'Hours' }
-					]}
-					bind:value={durationUnit}
+			<h6 class="self-start pt-4 font-semibold text-md">
+				Ends at {new Date(endTimestamp * 1000).toLocaleString('en-GB', {
+					timeZone: 'Europe/London',
+					minute: 'numeric',
+					hour: 'numeric',
+					second: 'numeric',
+					hour12: false
+				})} (UK time)
+			</h6>
+		</div>
+		<div class="flex flex-col">
+			<h1 class="self-start pb-2 text-3xl font-bold">Options</h1>
+			<div class="flex flex-row items-center gap-1">
+				<Checkbox
+					type="checkbox"
+					name="encode"
+					id="encode"
+					checked={encode}
+					on:click={(e) => (encode = !encode)}
 				/>
+				<label
+					for="encode"
+					class="underline select-none"
+					title="Encoding a clip improves playback compatibility and reduces overall filesize, but takes longer to process."
+					>Encode</label
+				>
 			</div>
 		</div>
-		<h6 class="self-start pt-4 font-semibold text-md">
-			Ends at {new Date(endTimestamp * 1000).toLocaleString('en-GB', {
-				timeZone: 'Europe/London',
-				minute: 'numeric',
-				hour: 'numeric',
-				second: 'numeric',
-				hour12: false
-			})} (UK time)
-		</h6>
 	</div>
 </aside>
 <div class="absolute flex flex-col justify-center items-center w-full -translate-y-[3.8rem]">
@@ -337,17 +358,17 @@
 	<input type="hidden" name="startTimestamp" bind:value={startTimestamp} required />
 	<input type="hidden" name="endTimestamp" bind:value={endTimestamp} required />
 	<input type="hidden" name="channel" bind:value={channel} required />
+	<input type="hidden" name="encode" bind:value={encode} required />
 </form>
 
 <div class="space" />
 
 {#await getRecordings()}
 	<p class="italic text-center">Fetching recordings...</p>
-{:then}
-	{#if recordings.error}
-		<p>Failed to fetch recordings: {recordings.error}</p>
-	{/if}
 {/await}
+{#if recordings.error}
+	<p>Failed to fetch recordings: {recordings.error}</p>
+{/if}
 <div class="flex justify-center">
 	<table
 		class="lg:2-xl:mx-[22rem] md:mx-[8rem] mx-2 my-2 border-black dark:border-white w-full table-auto"

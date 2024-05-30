@@ -33,6 +33,7 @@ export const actions: Actions = {
 			Number(data.get(key)!)
 		);
 		const channel = data.get('channel')!.toString();
+		const encode = data.get('encode')!.toString() === 'true';
 
 		// Validation
 		if (startTimestamp > endTimestamp) {
@@ -49,7 +50,8 @@ export const actions: Actions = {
 			var response = await axios.post(`http://${getBackendServerIp(channel)}/downloadVideo`, {
 				startTimestamp,
 				endTimestamp,
-				channel
+				channel,
+				encode
 			});
 		} catch (e) {
 			return fail(500, { error: FailedPostReason.FailedSend });
