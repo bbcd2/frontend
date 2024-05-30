@@ -9,7 +9,7 @@ const getBackendServerIp = (channel: string): string => {
 
 	// Val's Vell handles World News America
 	if (channel == 'BBC WORLD NEWS AMERICA HD') {
-		return '100.64.1.5:3001';
+		return 'vell.kattschan.co.uk:8880';
 	}
 	// Between 22:45 and 07:15, handle locally
 	const date = new Date();
