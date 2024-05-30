@@ -260,8 +260,8 @@
 		>
 			{#each Object.entries(SOURCES) as [channelGroup, channels]}
 				<optgroup label={channelGroup}>
-					{#each channels as channel}
-						<option value={channel}>{channel}</option>
+					{#each channels as channelOption}
+						<option value={channelOption}>{channelOption}</option>
 					{/each}
 				</optgroup>
 			{/each}
