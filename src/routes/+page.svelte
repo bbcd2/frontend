@@ -100,7 +100,7 @@
 				}
 
 				// Remove this job if complete
-				if (data && data.length > 0 && data[0].status == Status.Complete) {
+				if (data && data.length > 0 && data[0].status == Status.Completed) {
 					currentJobs.splice(jobIdx, 1);
 				}
 			}
