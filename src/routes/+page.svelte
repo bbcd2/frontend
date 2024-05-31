@@ -438,6 +438,7 @@
 							title="Recording {recording.uuid}"
 							bind:open={showRecordingModals[recording.uuid]}
 							autoclose
+							outsideclose
 						>
 							<p title={recording.user}>Recorded by: <strong>bbcduser</strong></p>
 							<!-- TODO: Have the username change, but thats not entirely needed right now -->
