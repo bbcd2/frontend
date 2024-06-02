@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 error() {
     echo "error $1 $?"
@@ -7,7 +7,7 @@ error() {
 
 # SSH_KEY="-i ~/.ssh/sheepy.moe"
 
-SERVERS=("root@bbcd2");
+SERVERS=("root@bbcd.uk.to")
 WORKING_DIRECTORY="~/frontend"  # full path
 DEPLOY_ARCHIVE="deploy.tar.xz" # no directory depth
 CLEAR_COMMAND="find . -maxdepth 1 ! -name '${DEPLOY_ARCHIVE}' ! -name node_modules ! -name .env -exec rm -rf {} +"
