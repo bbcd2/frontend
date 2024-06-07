@@ -71,6 +71,8 @@ export const SOURCES: { [key: string]: string[] } = {
 		'BBC PARLIAMENT',
 		'BBC ALBA',
 		'S4C',
+		'BBC STREAM 51 HD',
+		'BBC STREAM 52 HD',
 	]
 };
 
