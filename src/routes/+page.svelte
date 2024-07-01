@@ -516,7 +516,7 @@
 										href="/video/{recording.uuid}.mp4"
 										download
 										class="mt-3 text-center font-medium focus-within:ring-4 focus-within:outline-none inline-flex items-center justify-center px-5 py-2.5 text-sm text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 focus-within:ring-gray-200 dark:focus-within:ring-gray-700 rounded-lg"
-									>Download</a>
+										>Download</a>
 								</div>
 							{/if}
 						</Modal>

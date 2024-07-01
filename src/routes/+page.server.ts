@@ -9,7 +9,7 @@ const getBackendServerIp = (channel: string): string => {
 
 	// Val's Vell handles World News America
 	if (channel == 'BBC WORLD NEWS AMERICA HD') {
-		return 'vell.kattschan.co.uk:8880';
+		return '100.64.1.5:3001';
 	}
 	// Between 22:45 and 07:15, handle locally
 	const date = new Date();
@@ -21,8 +21,8 @@ const getBackendServerIp = (channel: string): string => {
 	) {
 		return '127.0.0.1:3001';
 	}
-	// Beatrice handles the rest! but fixme not right now
-	return '127.0.0.1:3001';
+	// Beatrice handles the rest!
+	return '100.64.1.3:3001';
 };
 
 export const actions: Actions = {
@@ -54,6 +54,23 @@ export const actions: Actions = {
 				encode
 			});
 		} catch (e) {
+			// If it was world news america, the error is unrecoverable(we only have one server to handle that)
+			if (channel == 'BBC WORLD NEWS AMERICA HD') {
+				return fail(500, { error: FailedPostReason.FailedSend });
+			} else {
+				// If it wasn't, we can try the local server
+				try {
+					var response = await axios.post(`http://127.0.0.1:3001/downloadVideo`, {
+						startTimestamp,
+						endTimestamp,
+						channel,
+						encode
+					});
+				} catch (e) {
+					// If that fails, we can't do anything
+					return fail(500, { error: FailedPostReason.FailedSend });
+				}
+			}
 			return fail(500, { error: FailedPostReason.FailedSend });
 		}
 		return { status: 200, body: await response.data };
